@@ -12,6 +12,7 @@ VERSION=$2
 SELENOID_IMAGE=${3:-ghcr.io/i-shulgan/selenoid:latest}
 WORK=$(mktemp -d)
 DIRECT_PORT=4446
+DEVTOOLS_PORT=7071
 SELENOID_PORT=4445
 
 cleanup() {
@@ -65,10 +66,13 @@ delete_session() {
 }
 
 echo "== chromedriver in $IMAGE"
-docker run -d --name chrome-smoke --shm-size=2g -p "$DIRECT_PORT:4444" -e ENABLE_VNC=true "$IMAGE" >/dev/null
+docker run -d --name chrome-smoke --shm-size=2g -p "$DIRECT_PORT:4444" -p "$DEVTOOLS_PORT:7070" -e ENABLE_VNC=true "$IMAGE" >/dev/null
 wait_for "http://localhost:$DIRECT_PORT/status"
 sid=$(run_session "http://localhost:$DIRECT_PORT" '{"capabilities":{"alwaysMatch":{"browserName":"chrome"}}}')
 docker exec chrome-smoke pgrep -x x11vnc >/dev/null || fail "x11vnc is not running with ENABLE_VNC=true"
+echo "Chrome command line and profile directories:"
+docker exec chrome-smoke sh -c 'ps -eo args | grep -E "^/opt/google/chrome/chrome " | head -1; ls -a /tmp'
+curl -fsS "http://localhost:$DEVTOOLS_PORT/json/protocol" | jq -e '.domains | length > 0' >/dev/null || fail "devtools helper cannot reach Chrome"
 delete_session "http://localhost:$DIRECT_PORT" "$sid"
 docker rm -f chrome-smoke >/dev/null
 
