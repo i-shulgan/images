@@ -136,6 +136,10 @@ func tmpDir() (string, error) {
 	return dir, nil
 }
 
+// BaseImage, when set, is passed to Dockerfiles as BASE_IMAGE: the image with
+// X server, fonts and helpers that browser images are built on.
+var BaseImage string
+
 // StaticFiles holds Dockerfiles and other build contexts, by default the
 // static directory of the repository.
 var StaticFiles fs.FS = os.DirFS("static")
@@ -184,6 +188,9 @@ func (i *Image) Build() error {
 		for _, arg := range i.BuildArgs {
 			args = append(args, "--build-arg", arg)
 		}
+	}
+	if BaseImage != "" {
+		args = append(args, "--build-arg", fmt.Sprintf("BASE_IMAGE=%s", BaseImage))
 	}
 	if httpProxy := os.Getenv("HTTP_PROXY"); httpProxy != "" {
 		args = append(args, "--build-arg", fmt.Sprintf("http_proxy=%s", httpProxy))

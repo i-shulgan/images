@@ -1,4 +1,4 @@
-FROM golang:1.22-bullseye as go
+FROM golang:1.27-bookworm AS go
 
 COPY tmp/devtools /devtools
 

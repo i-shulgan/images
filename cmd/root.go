@@ -21,6 +21,7 @@ var (
 	push           bool
 	tags           []string
 	staticDir      string
+	baseImage      string
 
 	rootCmd = &cobra.Command{
 		Use:           "images",
@@ -32,6 +33,7 @@ var (
 				return fmt.Errorf("static files directory: %v (run from the repository root or set --static-dir)", err)
 			}
 			build.StaticFiles = os.DirFS(staticDir)
+			build.BaseImage = baseImage
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -56,6 +58,7 @@ func initFlags() {
 	rootCmd.PersistentFlags().BoolVar(&test, "test", false, "run tests")
 	rootCmd.PersistentFlags().BoolVar(&ignoreTests, "ignore-tests", false, "continue to run even if tests failed")
 	rootCmd.PersistentFlags().BoolVarP(&push, "push", "p", false, "push image to Docker registry")
+	rootCmd.PersistentFlags().StringVar(&baseImage, "base-image", "", "base image with X server and helpers, built from selenium/base (default: the one in Dockerfiles)")
 	rootCmd.PersistentFlags().StringVar(&staticDir, "static-dir", "static", "directory with image build contexts (static in this repository)")
 }
 

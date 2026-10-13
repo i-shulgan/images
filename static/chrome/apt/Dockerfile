@@ -1,4 +1,5 @@
-FROM browsers/base:7.4.2
+ARG BASE_IMAGE=browsers/base:7.4.2
+FROM $BASE_IMAGE
 
 ARG VERSION
 ARG PACKAGE=google-chrome-stable
@@ -7,8 +8,8 @@ ARG INSTALL_DIR=chrome
 LABEL browser=$PACKAGE:$VERSION
 
 RUN \
-        curl -s https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-        echo 'deb [arch=amd64] https://dl.google.com/linux/chrome/deb/ stable main' > /etc/apt/sources.list.d/google.list && \
+        curl -fsSL https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg && \
+        echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main' > /etc/apt/sources.list.d/google.list && \
         apt-get update && \
         apt-get -y --no-install-recommends install iproute2 $PACKAGE=$VERSION && \
          ( \

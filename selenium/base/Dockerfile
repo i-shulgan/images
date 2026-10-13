@@ -1,6 +1,6 @@
-ARG UBUNTU_VERSION=22.04
+ARG UBUNTU_VERSION=24.04
 
-FROM golang:1.22-bullseye as go
+FROM golang:1.27-bookworm AS go
 
 COPY xseld /xseld
 
@@ -62,7 +62,6 @@ RUN \
     wmctrl \
     libnss-wrapper \
     xsel && \
-    if [ `uname -m` = "amd64" ]; then apt install -y flashplugin-installer; fi && \
     mkdir -p /var/lib/locales/supported.d/ && grep UTF-8 /usr/share/i18n/SUPPORTED > /var/lib/locales/supported.d/all && \
     locale-gen && update-locale && \
     fc-cache -f -v && \
