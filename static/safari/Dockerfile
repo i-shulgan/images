@@ -20,10 +20,9 @@ COPY cmd/prism /prism
 
 RUN \
     apt-get update && \
-    apt-get install --no-install-recommends -y upx-ucl libx11-dev && \
+    apt-get install --no-install-recommends -y libx11-dev && \
     cd /prism && \
     GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" && \
-    upx /prism/prism && \
     rm -Rf /var/lib/apt/lists/*
 
 ARG BASE_IMAGE=browsers/base:7.4.2

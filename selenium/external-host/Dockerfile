@@ -5,14 +5,10 @@ COPY choose /choose
 COPY rproxy /rproxy
 
 RUN \
-    apt-get update && \
-    apt-get install -y upx-ucl && \
     cd /choose && \
     GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" && \
-    upx /choose/choose && \
     cd /rproxy && \
-    GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" && \
-    upx /rproxy/rproxy
+    GOOS=linux GOARCH=amd64 go build -ldflags="-s -w"
 
 FROM ubuntu:18.04
 

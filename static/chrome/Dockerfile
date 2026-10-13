@@ -4,12 +4,9 @@ FROM golang:1.27-bookworm AS go
 COPY devtools /devtools
 
 RUN \
-    apt-get update && \
-    apt-get install -y upx-ucl && \
     cd /devtools && \
     go test -race && \
-    GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" && \
-    upx /devtools/devtools
+    GOOS=linux GOARCH=amd64 go build -ldflags="-s -w"
 
 FROM selenoid/dev_chrome:$VERSION
 
