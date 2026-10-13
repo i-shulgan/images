@@ -1,13 +1,12 @@
-FROM golang:1.22-bullseye as go
+FROM golang:1.27-bookworm AS go
 
 COPY tmp/devtools /devtools
 
 RUN \
     apt-get update && \
-    apt-get install -y upx-ucl libx11-dev && \
+    apt-get install -y libx11-dev && \
     cd /devtools && \
-    GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" && \
-    upx /devtools/devtools
+    GOOS=linux GOARCH=amd64 go build -ldflags="-s -w"
 
 FROM ubuntu:20.04
 

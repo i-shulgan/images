@@ -1,4 +1,5 @@
-FROM browsers/base:7.4.2
+ARG BASE_IMAGE=browsers/base:7.4.2
+FROM $BASE_IMAGE
 
 ARG VERSION=noop
 ARG PACKAGE=microsoft-edge-stable

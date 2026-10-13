@@ -21,7 +21,7 @@ var (
 				Tags:           tags,
 				PushImage:      push,
 			}
-			chrome := &build.Chrome{req}
+			chrome := &build.Chrome{Requirements: req}
 			return chrome.Build()
 		},
 	}

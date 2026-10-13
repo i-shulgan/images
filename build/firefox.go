@@ -77,6 +77,9 @@ func (c *Firefox) Build() error {
 	}
 
 	firefoxMajorVersion, err := strconv.Atoi(majorVersion(pkgTagVersion))
+	if err != nil {
+		return fmt.Errorf("parse Firefox version %s: %v", pkgTagVersion, err)
+	}
 	geckoDriverCompatible := firefoxMajorVersion > 48
 	srcDir := "firefox/selenoid"
 	if !geckoDriverCompatible {

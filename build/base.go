@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/markbates/pkger"
 	"io"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -14,7 +14,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -137,64 +136,46 @@ func tmpDir() (string, error) {
 	return dir, nil
 }
 
+// BaseImage, when set, is passed to Dockerfiles as BASE_IMAGE: the image with
+// X server, fonts and helpers that browser images are built on.
+var BaseImage string
+
+// StaticFiles holds Dockerfiles and other build contexts, by default the
+// static directory of the repository.
+var StaticFiles fs.FS = os.DirFS("static")
+
 func copySourceFiles(srcDir string, destDir string) (string, error) {
-
-	const prefix = "/static"
-	walkDir := filepath.Join(prefix, srcDir)
-	err := pkger.Walk(walkDir, func(path string, info os.FileInfo, err error) error {
-
+	err := fs.WalkDir(StaticFiles, srcDir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-
-		regex := regexp.MustCompile(`^.+:/static(.+)$`)
-		relativePath := regex.FindStringSubmatch(path)[1]
-		outputPath := filepath.Join(destDir, relativePath)
-		if info.IsDir() {
-			return os.MkdirAll(outputPath, info.Mode())
+		outputPath := filepath.Join(destDir, filepath.FromSlash(p))
+		info, err := d.Info()
+		if err != nil {
+			return err
 		}
-
-		fileDir := filepath.Join(destDir, filepath.Dir(relativePath))
-		if !fileExists(fileDir) {
-			log.Printf("mkdir dir %s", fileDir)
-			return os.MkdirAll(fileDir, info.Mode())
+		if d.IsDir() {
+			return os.MkdirAll(outputPath, info.Mode().Perm()|0700)
 		}
-
-		src, err := pkger.Open(path)
+		src, err := StaticFiles.Open(p)
 		if err != nil {
 			return err
 		}
 		defer src.Close()
-
-		dest, err := os.Create(outputPath)
+		dest, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode().Perm())
 		if err != nil {
 			return err
 		}
 		defer dest.Close()
-
-		_, err = io.Copy(dest, src)
-		if err != nil {
+		if _, err := io.Copy(dest, src); err != nil {
 			return err
 		}
-
-		err = dest.Sync()
-		if err != nil {
-			return err
-		}
-
-		err = os.Chmod(outputPath, info.Mode())
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return dest.Sync()
 	})
-
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("copy %s: %v", srcDir, err)
 	}
-
-	return filepath.Join(destDir, srcDir), nil
+	return filepath.Join(destDir, filepath.FromSlash(srcDir)), nil
 }
 
 func (i *Image) Build() error {
@@ -207,6 +188,9 @@ func (i *Image) Build() error {
 		for _, arg := range i.BuildArgs {
 			args = append(args, "--build-arg", arg)
 		}
+	}
+	if BaseImage != "" {
+		args = append(args, "--build-arg", fmt.Sprintf("BASE_IMAGE=%s", BaseImage))
 	}
 	if httpProxy := os.Getenv("HTTP_PROXY"); httpProxy != "" {
 		args = append(args, "--build-arg", fmt.Sprintf("http_proxy=%s", httpProxy))

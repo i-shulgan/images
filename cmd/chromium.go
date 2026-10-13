@@ -19,7 +19,7 @@ var (
 				Tags:          tags,
 				PushImage:     push,
 			}
-			chromium := &build.Chromium{req}
+			chromium := &build.Chromium{Requirements: req}
 			return chromium.Build()
 		},
 	}

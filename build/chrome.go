@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -131,28 +130,8 @@ func (c *Chrome) channelToBuildArgs() []string {
 func (c *Chrome) parseChromeDriverVersion(pkgVersion string, chromeDriverVersions map[string]string) (string, error) {
 	version := c.DriverVersion
 	if version == LatestVersion {
-
-		var matchingVersions []string
-		for mv := range chromeDriverVersions {
-			if strings.Contains(mv, pkgVersion) {
-				matchingVersions = append(matchingVersions, mv)
-			}
-		}
-		if len(matchingVersions) > 0 {
-			sort.SliceStable(matchingVersions, func(i, j int) bool {
-				l := matchingVersions[i]
-				r := matchingVersions[j]
-				lv, err := hv.NewVersion(l)
-				if err != nil {
-					return false
-				}
-				rv, err := hv.NewVersion(r)
-				if err != nil {
-					return false
-				}
-				return lv.LessThan(rv)
-			})
-			return matchingVersions[0], nil
+		if v, ok := matchChromeDriver(pkgVersion, chromeDriverVersions); ok {
+			return v, nil
 		}
 
 		const baseUrl = "https://chromedriver.storage.googleapis.com/"
@@ -163,6 +142,35 @@ func (c *Chrome) parseChromeDriverVersion(pkgVersion string, chromeDriverVersion
 		return v, nil
 	}
 	return version, nil
+}
+
+// matchChromeDriver picks the Chrome for Testing chromedriver for a Chrome
+// version: the same version if published, otherwise the newest one of the
+// same build (major.minor.build), otherwise the newest of the same major.
+func matchChromeDriver(chromeVersion string, versions map[string]string) (string, bool) {
+	if _, ok := versions[chromeVersion]; ok {
+		return chromeVersion, true
+	}
+	for _, prefix := range []string{buildVersion(chromeVersion), majorVersion(chromeVersion)} {
+		best := ""
+		var bestVersion *hv.Version
+		for v := range versions {
+			if !strings.HasPrefix(v, prefix+".") {
+				continue
+			}
+			parsed, err := hv.NewVersion(v)
+			if err != nil {
+				continue
+			}
+			if bestVersion == nil || parsed.GreaterThan(bestVersion) {
+				best, bestVersion = v, parsed
+			}
+		}
+		if best != "" {
+			return best, true
+		}
+	}
+	return "", false
 }
 
 func (c *Chrome) downloadChromeDriver(dir string, version string, chromeDriverVersions map[string]string) error {

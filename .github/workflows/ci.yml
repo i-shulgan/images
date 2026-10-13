@@ -1,0 +1,94 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # Go modules built into browser images, besides the images tool itself.
+  MODULES: . selenium/base/fileserver selenium/base/xseld static/chrome/devtools
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: go vet
+        run: for m in $MODULES; do (cd "$m" && go vet ./...); done
+
+      - name: staticcheck
+        run: for m in $MODULES; do (cd "$m" && go run honnef.co/go/tools/cmd/staticcheck@latest ./...); done
+
+      - name: shellcheck
+        run: shellcheck ci/*.sh
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: go test
+        run: |
+          for m in $MODULES; do
+            (cd "$m" && go test -race -coverprofile=coverage.txt -covermode=atomic ./...)
+          done
+
+      - name: Coverage summary
+        run: |
+          {
+            echo '### Coverage'
+            echo '```'
+            for m in $MODULES; do
+              if [ -s "$m/coverage.txt" ]; then
+                (cd "$m" && echo "$m: $(go tool cover -func=coverage.txt | tail -1)")
+              fi
+            done
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: govulncheck
+        run: for m in $MODULES; do (cd "$m" && go run golang.org/x/vuln/cmd/govulncheck@latest ./...); done
+
+  release:
+    needs: [lint, test, govulncheck]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-please
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      # Opens/updates the release PR from Conventional Commits on master and,
+      # once that PR is merged, creates the vX.Y.Z tag and GitHub release.
+      - id: release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

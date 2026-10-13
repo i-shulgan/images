@@ -21,7 +21,7 @@ var (
 				Tags:           tags,
 				PushImage:      push,
 			}
-			yandexBrowser := &build.YandexBrowser{req}
+			yandexBrowser := &build.YandexBrowser{Requirements: req}
 			return yandexBrowser.Build()
 		},
 	}

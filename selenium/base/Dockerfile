@@ -1,6 +1,6 @@
-ARG UBUNTU_VERSION=22.04
+ARG UBUNTU_VERSION=24.04
 
-FROM golang:1.22-bullseye as go
+FROM golang:1.27-bookworm AS go
 
 COPY xseld /xseld
 
@@ -9,14 +9,12 @@ COPY fileserver /fileserver
 RUN \
     if [ `uname -m` = "aarch64" ]; then ARCH="arm64"; else ARCH="amd64"; fi && \
     apt-get update && \
-    apt-get install -y upx-ucl libx11-dev && \
+    apt-get install -y libx11-dev && \
     cd /xseld && \
     GOOS=linux GOARCH=$ARCH go build -ldflags="-s -w" && \
-    upx /xseld/xseld && \
     cd /fileserver && \
     go test -race && \
-    GOOS=linux GOARCH=$ARCH go build -ldflags="-s -w" && \
-    upx /fileserver/fileserver
+    GOOS=linux GOARCH=$ARCH go build -ldflags="-s -w"
 
 # For M1 Chromium images it's required to override a version to 18.04 as latest Ubuntu distributions don't ship updates
 FROM ubuntu:$UBUNTU_VERSION
@@ -62,7 +60,6 @@ RUN \
     wmctrl \
     libnss-wrapper \
     xsel && \
-    if [ `uname -m` = "amd64" ]; then apt install -y flashplugin-installer; fi && \
     mkdir -p /var/lib/locales/supported.d/ && grep UTF-8 /usr/share/i18n/SUPPORTED > /var/lib/locales/supported.d/all && \
     locale-gen && update-locale && \
     fc-cache -f -v && \

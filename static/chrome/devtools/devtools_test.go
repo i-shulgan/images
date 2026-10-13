@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	. "github.com/aandryashin/matchers"
-	. "github.com/aandryashin/matchers/httpresp"
 	"github.com/gorilla/websocket"
 	"github.com/mafredri/cdp"
 	"github.com/mafredri/cdp/protocol/target"
 	"github.com/mafredri/cdp/rpcc"
+	assert "github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -128,8 +127,8 @@ func mockDevtoolsMux() http.Handler {
 func TestProtocol(t *testing.T) {
 	u := fmt.Sprintf("http://%s/json/protocol", srv.Listener.Addr().String())
 	resp, err := http.Get(u)
-	AssertThat(t, err, Is{nil})
-	AssertThat(t, resp, Code{200})
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
 }
 
 func TestDevtools(t *testing.T) {
@@ -138,29 +137,29 @@ func TestDevtools(t *testing.T) {
 
 	browserWs := fmt.Sprintf("ws://%s/", srv.Listener.Addr().String())
 	browserConn, err := rpcc.DialContext(ctx, browserWs)
-	AssertThat(t, err, Is{nil})
+	assert.NoError(t, err)
 	defer browserConn.Close()
 
 	browserClient := cdp.NewClient(browserConn)
-	targets, err := browserClient.Target.GetTargets(ctx)
-	AssertThat(t, err, Is{nil})
-	AssertThat(t, len(targets.TargetInfos), EqualTo{2})
+	targets, err := browserClient.Target.GetTargets(ctx, target.NewGetTargetsArgs())
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(targets.TargetInfos))
 
 	defaultPageWs := fmt.Sprintf("ws://%s/page", srv.Listener.Addr().String())
 	defaultPageConn, err := rpcc.DialContext(ctx, defaultPageWs)
-	AssertThat(t, err, Is{nil})
+	assert.NoError(t, err)
 	defer defaultPageConn.Close()
 	defaultPageClient := cdp.NewClient(defaultPageConn)
 	err = defaultPageClient.Page.Enable(ctx)
-	AssertThat(t, err, Is{nil})
+	assert.NoError(t, err)
 
 	selectedPageWs := fmt.Sprintf("ws://%s/page/%s", srv.Listener.Addr().String(), targets.TargetInfos[1].TargetID)
 	selectedPageConn, err := rpcc.DialContext(ctx, selectedPageWs)
-	AssertThat(t, err, Is{nil})
+	assert.NoError(t, err)
 	defer selectedPageConn.Close()
 	selectedPageClient := cdp.NewClient(selectedPageConn)
 	err = selectedPageClient.Page.Enable(ctx)
-	AssertThat(t, err, Is{nil})
+	assert.NoError(t, err)
 }
 
 func TestDetectDevtoolsHost(t *testing.T) {
@@ -171,7 +170,20 @@ func TestDetectDevtoolsHost(t *testing.T) {
 	portFile := filepath.Join(profilePath, "DevToolsActivePort")
 	_ = os.WriteFile(portFile, []byte("12345\n/devtools/browser/6f37c7fe-a0a6-4346-a6e2-80c5da0687f0"), 0644)
 
-	AssertThat(t, detectDevtoolsHost(name), EqualTo{"127.0.0.1:12345"})
+	assert.Equal(t, "127.0.0.1:12345", detectDevtoolsHost(name))
+}
+
+func TestDetectDevtoolsHostScopedDir(t *testing.T) {
+	name := t.TempDir()
+	// Chrome's own profile directory has no DevToolsActivePort.
+	assert.NoError(t, os.MkdirAll(filepath.Join(name, "com.google.Chrome.cYa1Yh"), os.ModePerm))
+	// Profile created by chromedriver 155.
+	profilePath := filepath.Join(name, "org.chromium.Chromium.scoped_dir.lhkpmR")
+	assert.NoError(t, os.MkdirAll(profilePath, os.ModePerm))
+	portFile := filepath.Join(profilePath, "DevToolsActivePort")
+	assert.NoError(t, os.WriteFile(portFile, []byte("41235\n/devtools/browser/6f37c7fe-a0a6-4346-a6e2-80c5da0687f0"), 0644))
+
+	assert.Equal(t, "127.0.0.1:41235", detectDevtoolsHost(name))
 }
 
 func TestDetectDevtoolsHostProfileDir(t *testing.T) {
@@ -183,5 +195,5 @@ func TestDetectDevtoolsHostProfileDir(t *testing.T) {
 	_ = os.WriteFile(portFile, []byte("12345\n/devtools/browser/6f37c7fe-a0a6-4346-a6e2-80c5da0687f0"), 0644)
 
 	t.Setenv("BROWSER_PROFILE_DIR", profilePath)
-	AssertThat(t, detectDevtoolsHost(name), EqualTo{"127.0.0.1:12345"})
+	assert.Equal(t, "127.0.0.1:12345", detectDevtoolsHost(name))
 }

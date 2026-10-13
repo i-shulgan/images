@@ -21,7 +21,7 @@ var (
 				Tags:           tags,
 				PushImage:      push,
 			}
-			edge := &build.Edge{req}
+			edge := &build.Edge{Requirements: req}
 			return edge.Build()
 		},
 	}

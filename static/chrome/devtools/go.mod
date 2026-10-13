@@ -1,15 +1,11 @@
 module github.com/aerokube/devtools
 
-go 1.22
+go 1.27.2
 
 require (
-	github.com/aandryashin/matchers v0.0.0-20161126170413-435295ea180e
-	github.com/gorilla/websocket v1.5.1
-	github.com/mafredri/cdp v0.34.1
+	github.com/gorilla/websocket v1.5.3
+	github.com/mafredri/cdp v0.35.0
+	github.com/stretchr/testify v1.12.1
 )
 
-require (
-	github.com/google/go-cmp v0.6.0 // indirect
-	golang.org/x/net v0.23.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
-)
+require go.yaml.in/yaml/v3 v3.0.5 // indirect
