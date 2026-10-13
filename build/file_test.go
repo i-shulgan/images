@@ -1,15 +1,15 @@
 package build
 
 import (
-	. "github.com/aandryashin/matchers"
+	assert "github.com/stretchr/testify/require"
 	"os"
 	"testing"
 )
 
 func TestUnzip(t *testing.T) {
 	data := readFile(t, "testfile.zip")
-	AssertThat(t, isZipFile(data), Is{true})
-	AssertThat(t, isTarGzFile(data), Is{false})
+	assert.True(t, isZipFile(data))
+	assert.False(t, isTarGzFile(data))
 	testUnpack(t, data, "zip-testfile", func(data []byte, filePath string, outputDir string) (string, error) {
 		return unzip(data, filePath, outputDir)
 	}, "zip\n")
@@ -17,8 +17,8 @@ func TestUnzip(t *testing.T) {
 
 func TestUntar(t *testing.T) {
 	data := readFile(t, "testfile.tar.gz")
-	AssertThat(t, isTarGzFile(data), Is{true})
-	AssertThat(t, isZipFile(data), Is{false})
+	assert.True(t, isTarGzFile(data))
+	assert.False(t, isZipFile(data))
 	testUnpack(t, data, "gzip-testfile", func(data []byte, filePath string, outputDir string) (string, error) {
 		return untar(data, filePath, outputDir)
 	}, "gzip\n")

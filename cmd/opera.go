@@ -21,7 +21,7 @@ var (
 				Tags:           tags,
 				PushImage:      push,
 			}
-			opera := &build.Opera{req}
+			opera := &build.Opera{Requirements: req}
 			return opera.Build()
 		},
 	}
