@@ -61,8 +61,9 @@ func mux(ctx context.Context, u *url.URL) http.Handler {
 		case queue <- struct{}{}:
 		}
 		(&httputil.ReverseProxy{
-			Director: func(r *http.Request) {
-				r.URL.Scheme, r.URL.Host = u.Scheme, u.Host
+			Rewrite: func(pr *httputil.ProxyRequest) {
+				pr.SetXForwarded()
+				pr.Out.URL.Scheme, pr.Out.URL.Host = u.Scheme, u.Host
 			},
 			ModifyResponse: func(resp *http.Response) error {
 				if resp.StatusCode != http.StatusOK {
@@ -80,8 +81,9 @@ func mux(ctx context.Context, u *url.URL) http.Handler {
 	}))
 	mux.HandleFunc("/wd/hub/session/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		(&httputil.ReverseProxy{
-			Director: func(r *http.Request) {
-				r.URL.Scheme, r.URL.Host = u.Scheme, u.Host
+			Rewrite: func(pr *httputil.ProxyRequest) {
+				pr.SetXForwarded()
+				pr.Out.URL.Scheme, pr.Out.URL.Host = u.Scheme, u.Host
 			},
 		}).ServeHTTP(w, r)
 		fragments := strings.Split(r.URL.Path, "/")
