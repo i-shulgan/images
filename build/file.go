@@ -143,6 +143,9 @@ func unzip(data []byte, fileName string, outputDir string) (string, error) {
 func untar(data []byte, fileName string, outputDir string) (string, error) {
 
 	gzr, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return "", fmt.Errorf("read gzip: %v", err)
+	}
 	defer gzr.Close()
 
 	extractAndWriteFile := func(tr *tar.Reader, header *tar.Header) (string, error) {

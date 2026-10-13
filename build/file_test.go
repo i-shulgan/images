@@ -61,3 +61,8 @@ func readFile(t *testing.T, fileName string) []byte {
 	}
 	return data
 }
+
+func TestUntarCorruptedData(t *testing.T) {
+	_, err := untar([]byte("not a gzip stream"), "file", t.TempDir())
+	assert.Error(t, err)
+}
