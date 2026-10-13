@@ -66,8 +66,9 @@ jobs:
           set -euo pipefail
           package="$REQUESTED"
           if [ -z "$package" ]; then
-            package=$(curl -fsSL https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages \
-              | awk '/^Package: google-chrome-stable$/ {found=1} found && /^Version:/ {print $2; exit}')
+            # Read the whole index first: awk stopping early would break curl's pipe.
+            index=$(curl -fsSL https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages)
+            package=$(awk '/^Package: google-chrome-stable$/ {found=1} found && /^Version:/ {print $2; exit}' <<<"$index")
           fi
           [ -n "$package" ] || { echo "::error::cannot resolve the Chrome version"; exit 1; }
           full=${package%%-*}
