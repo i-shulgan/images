@@ -1,0 +1,131 @@
+name: chrome
+
+on:
+  schedule:
+    # Every day: picks up new stable Chrome releases.
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'google-chrome-stable package version, e.g. 141.0.7390.122-1 (empty: latest stable)'
+        required: false
+      force:
+        description: 'Rebuild and push even if the image already exists'
+        type: boolean
+        default: false
+  push:
+    branches:
+      - master
+    paths:
+      - 'static/chrome/**'
+      - 'selenium/base/**'
+      - 'build/**'
+      - 'cmd/**'
+      - 'go.mod'
+      - 'ci/chrome-smoke.sh'
+      - '.github/workflows/chrome.yml'
+  pull_request:
+    paths:
+      - 'static/chrome/**'
+      - 'selenium/base/**'
+      - 'build/**'
+      - 'cmd/**'
+      - 'go.mod'
+      - 'ci/chrome-smoke.sh'
+      - '.github/workflows/chrome.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chrome-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/chrome
+  SELENOID_IMAGE: ghcr.io/${{ github.repository_owner }}/selenoid:latest
+
+jobs:
+  chrome:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Resolve Chrome version
+        id: version
+        env:
+          REQUESTED: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          package="$REQUESTED"
+          if [ -z "$package" ]; then
+            package=$(curl -fsSL https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages \
+              | awk '/^Package: google-chrome-stable$/ {found=1} found && /^Version:/ {print $2; exit}')
+          fi
+          [ -n "$package" ] || { echo "::error::cannot resolve the Chrome version"; exit 1; }
+          full=${package%%-*}
+          tag=$(echo "$full" | cut -d. -f1-2)
+          {
+            echo "package=$package"
+            echo "full=$full"
+            echo "tag=$tag"
+          } >> "$GITHUB_OUTPUT"
+          echo "### Chrome $full" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Skip if already published
+        id: published
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.force)
+        run: |
+          if docker manifest inspect "$IMAGE:${{ steps.version.outputs.full }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "$IMAGE:${{ steps.version.outputs.full }} is already published" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Build base image
+        if: steps.published.outputs.exists != 'true'
+        run: docker build --pull -t browsers/base:ci selenium/base
+
+      - name: Build Chrome image
+        if: steps.published.outputs.exists != 'true'
+        run: |
+          go build -o images .
+          ./images chrome --base-image browsers/base:ci \
+            -b "${{ steps.version.outputs.package }}" \
+            -t "$IMAGE:${{ steps.version.outputs.full }}" \
+            -t "$IMAGE:${{ steps.version.outputs.tag }}" \
+            -t "$IMAGE:latest"
+
+      - name: Smoke test
+        if: steps.published.outputs.exists != 'true'
+        run: |
+          # Selenoid from this account; the upstream image until one is published.
+          selenoid="$SELENOID_IMAGE"
+          docker pull -q "$selenoid" || selenoid=aerokube/selenoid:latest-release
+          ci/chrome-smoke.sh "$IMAGE:${{ steps.version.outputs.full }}" "${{ steps.version.outputs.tag }}" "$selenoid"
+
+      - name: Push
+        if: steps.published.outputs.exists != 'true' && github.event_name != 'pull_request'
+        run: |
+          docker push "$IMAGE:${{ steps.version.outputs.full }}"
+          docker push "$IMAGE:${{ steps.version.outputs.tag }}"
+          docker push "$IMAGE:latest"
+          {
+            echo "Published:"
+            echo "- \`$IMAGE:${{ steps.version.outputs.full }}\`"
+            echo "- \`$IMAGE:${{ steps.version.outputs.tag }}\`"
+            echo "- \`$IMAGE:latest\`"
+          } >> "$GITHUB_STEP_SUMMARY"
