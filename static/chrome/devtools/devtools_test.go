@@ -173,6 +173,19 @@ func TestDetectDevtoolsHost(t *testing.T) {
 	assert.Equal(t, "127.0.0.1:12345", detectDevtoolsHost(name))
 }
 
+func TestDetectDevtoolsHostScopedDir(t *testing.T) {
+	name := t.TempDir()
+	// Chrome's own profile directory has no DevToolsActivePort.
+	assert.NoError(t, os.MkdirAll(filepath.Join(name, "com.google.Chrome.cYa1Yh"), os.ModePerm))
+	// Profile created by chromedriver 155.
+	profilePath := filepath.Join(name, "org.chromium.Chromium.scoped_dir.lhkpmR")
+	assert.NoError(t, os.MkdirAll(profilePath, os.ModePerm))
+	portFile := filepath.Join(profilePath, "DevToolsActivePort")
+	assert.NoError(t, os.WriteFile(portFile, []byte("41235\n/devtools/browser/6f37c7fe-a0a6-4346-a6e2-80c5da0687f0"), 0644))
+
+	assert.Equal(t, "127.0.0.1:41235", detectDevtoolsHost(name))
+}
+
 func TestDetectDevtoolsHostProfileDir(t *testing.T) {
 	name, _ := os.MkdirTemp("", "devtools")
 	defer os.RemoveAll(name)

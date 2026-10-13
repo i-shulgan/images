@@ -13,8 +13,8 @@ RUN \
         apt-get update && \
         apt-get -y --no-install-recommends install iproute2 $PACKAGE=$VERSION && \
          ( \
-          sed -i -e 's@exec -a "$0" "$HERE/chrome"@& --no-sandbox --disable-gpu --remote-debugging-port=0@' /opt/google/$INSTALL_DIR/$PACKAGE || \
-          sed -i -e 's@exec -a "$0" "$HERE/chrome"@& --no-sandbox --disable-gpu --remote-debugging-port=0@' /opt/google/$INSTALL_DIR/google-chrome \
+          sed -i -e 's@exec -a "$0" "$HERE/chrome"@& --no-sandbox --disable-gpu@' /opt/google/$INSTALL_DIR/$PACKAGE || \
+          sed -i -e 's@exec -a "$0" "$HERE/chrome"@& --no-sandbox --disable-gpu@' /opt/google/$INSTALL_DIR/google-chrome \
          ) && \
         chown root:root /opt/google/$INSTALL_DIR/chrome-sandbox && \
         chmod 4755 /opt/google/$INSTALL_DIR/chrome-sandbox && \

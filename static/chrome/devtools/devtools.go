@@ -161,7 +161,9 @@ func detectDevtoolsHost(baseDir string) string {
 	if found {
 		candidates = append(candidates, pd)
 	} else {
-		for _, glob := range []string{".com.google.Chrome*", ".org.chromium.Chromium*"} {
+		// Older chromedriver used hidden ".org.chromium.Chromium.*" profile
+		// directories; current ones use "org.chromium.Chromium.scoped_dir.*".
+		for _, glob := range []string{".com.google.Chrome*", ".org.chromium.Chromium*", "org.chromium.Chromium*"} {
 			cds, err := filepath.Glob(filepath.Join(baseDir, glob))
 			if err == nil {
 				candidates = append(candidates, cds...)
