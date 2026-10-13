@@ -48,9 +48,11 @@ func browser(w http.ResponseWriter, r *http.Request) {
 func proxyWebSocket(w http.ResponseWriter, r *http.Request, u *url.URL) {
 	u.Scheme = "http"
 	(&httputil.ReverseProxy{
-		Director: func(r *http.Request) {
-			r.Host = "localhost"
-			r.URL = u
+		Rewrite: func(pr *httputil.ProxyRequest) {
+			// Chrome only accepts DevTools requests for localhost.
+			pr.Out.Host = "localhost"
+			target := *u
+			pr.Out.URL = &target
 		},
 	}).ServeHTTP(w, r)
 }
@@ -84,9 +86,11 @@ func protocol(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("[PROTOCOL] [%s]", u.String())
 	(&httputil.ReverseProxy{
-		Director: func(r *http.Request) {
-			r.Host = "localhost"
-			r.URL = u
+		Rewrite: func(pr *httputil.ProxyRequest) {
+			// Chrome only accepts DevTools requests for localhost.
+			pr.Out.Host = "localhost"
+			target := *u
+			pr.Out.URL = &target
 		},
 	}).ServeHTTP(w, r)
 }

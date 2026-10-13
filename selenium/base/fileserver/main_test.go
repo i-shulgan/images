@@ -1,8 +1,8 @@
 package main
 
 import (
-	. "github.com/aandryashin/matchers"
-	. "github.com/aandryashin/matchers/httpresp"
+	"encoding/json"
+	assert "github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,29 +29,29 @@ func TestDownloadAndRemoveFile(t *testing.T) {
 	_ = os.WriteFile(tempFile.Name(), []byte("test-data"), 0644)
 	tempFileName := filepath.Base(tempFile.Name())
 	resp, err := http.Get(withUrl("/" + tempFileName))
-	AssertThat(t, err, Is{nil})
-	AssertThat(t, resp, Code{200})
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
 	_, err = os.Stat(tempFile.Name())
-	AssertThat(t, err, Is{nil})
+	assert.NoError(t, err)
 
 	rsp, err := http.Get(withUrl("/?json"))
-	AssertThat(t, err, Is{nil})
-	AssertThat(t, rsp, Code{http.StatusOK})
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rsp.StatusCode)
 	var files []string
-	AssertThat(t, rsp, IsJson{&files})
-	AssertThat(t, files, EqualTo{[]string{tempFileName}})
+	assert.NoError(t, json.NewDecoder(rsp.Body).Decode(&files))
+	assert.Equal(t, []string{tempFileName}, files)
 
 	req, _ := http.NewRequest(http.MethodDelete, withUrl("/"+tempFileName), nil)
 	resp, err = http.DefaultClient.Do(req)
-	AssertThat(t, err, Is{nil})
-	AssertThat(t, resp, Code{200})
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
 	_, err = os.Stat(tempFile.Name())
-	AssertThat(t, err, Not{nil})
+	assert.Error(t, err)
 }
 
 func TestRemoveMissingFile(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodDelete, withUrl("/missing-file"), nil)
 	resp, err := http.DefaultClient.Do(req)
-	AssertThat(t, err, Is{nil})
-	AssertThat(t, resp, Code{404})
+	assert.NoError(t, err)
+	assert.Equal(t, 404, resp.StatusCode)
 }
